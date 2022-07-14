@@ -298,7 +298,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 self.total_fixed_OM_cost)
         if hasattr(self, "total_variable_OM_cost"):
             var_dict["Total variable O&M cost [$MM/year]"] = value(
-                self.total_variable_OM_cost)
+                self.total_variable_OM_cost[0])
 
         if hasattr(self, "total_TPC") and \
             hasattr(self, "total_fixed_OM_cost") and \
@@ -306,7 +306,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
             var_dict["Total Annualized Cost [$MM/year]"] = (
                 TAC +
                 value(self.total_fixed_OM_cost) +
-                value(self.total_variable_OM_cost))
+                value(self.total_variable_OM_cost[0]))
 
         report_dir = {}
         report_dir["Value"] = {}
