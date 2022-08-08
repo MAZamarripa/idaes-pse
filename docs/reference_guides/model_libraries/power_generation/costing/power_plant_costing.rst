@@ -10,8 +10,8 @@ Introduction
 .. note:: The power plant costing method is available for most of the unit operations in power plants (Boiler, Feed Water Heaters, Compressor, Turbine, Condenser, etc.).
 
 A capital cost methodology is developed in this module, both bare and erected cost and total plant cost are calculated based on costing correlations. 
-The Power Plant Costing Library contains two main costing functions `get_PP_costing` and `get_SCO2_unit_cost`.
-The first function (get_PP_costing) can be called to include cost correlations for equipment typically used in simulation of 7 technologies: 
+The Power Plant Costing Library contains 5 main costing functions: `get_PP_costing`, `get_SCO2_unit_cost`, `get_ASU_cost`, `get_fixed_OM_costs`, and `get_variable_OM_costs`.
+The first function (`get_PP_costing`) can be called to include cost correlations for equipment typically used in simulation of 7 technologies: 
 
 1. Supercritical pulverized coal plants (SCPC),
 2. Subcritical pulverized coal plants,
@@ -21,10 +21,13 @@ The first function (get_PP_costing) can be called to include cost correlations f
 6. natural gas air-fired plant (NGCC),
 7. Advanced ultra-supercritical PC (AUSC).
 
-Similarly, `get_sCO2_unit_cost` can be called to include cost correlations for equipment in supercritical CO2 power cycle plants.
+Similarly, `get_sCO2_unit_cost` can be called to include cost correlations for equipment in supercritical CO2 power cycle plants and the method `get_ASU_cost` calls costing for equipment in air separation units. The method `costing_initialization` exists to initialize pp, sCO2 and ASU costing blocks.
 
-Details are given for each method later in this documentation, 
-however, there are many similarities between methods as discribed below:
+The methods `get_fixed_OM_costs` and `get_variable_OM_costs` calculate operating and maintenance costs for fixed (operating labor, maintenance labor, admin/support labor, property taxes and insurance, maintenance materials) and variable (fuel, consumable and waste disposal costs for either electricity or hydrogen production indexed by time), respectively. The methods `initialize_fixed_OM_costs` and `initialize_variable_OM_costs` exist to initialize fixed and variable O&M costing blocks.
+
+Several reporting methods exist (`report`, `display_total_plant_costs`, `display_bare_erected_costs`, `display_equipment_costs`, `get_total_TPC`, `display_flowsheet_cost`) as well as a check on supercritical CO2 bounds (`check_sCO2_costing_bounds`).
+
+Details are given for each method later in this documentation; however, there are many similarities between methods as described below:
 
 Costing sub-blocks
 ^^^^^^^^^^^^^^^^^^
@@ -79,7 +82,7 @@ common of these paramters is the CE index parameter. The CE index will be set to
 
 .. note:: The global paramters are created when the first instance of `get_costing` is called and use the values provided there for initialization. Subsequent `get_costing` calls use the existing paramters, and do not change the initialized values. i.e. any "year" argument provided to a `get_costing` call after the first will be ignored.
 
-To manually set the dollar year the user must call m.fs.get_costing(year=2019) before any calls to a 'get costing' function are made.
+To manually set the dollar year the user must call `m.fs.get_costing(year=2019)`` before any calls to a `get costing` function are made.
 
 
 
@@ -104,7 +107,7 @@ however, the exponents have been trained using several vendor quotes.
 
 where:
 
-* sacaled_cost - the cost of the system in Million dollars
+* scaled_cost - the cost of the system in Million dollars
 * reference_cost - the cost of the reference system in thousands of dollars
 * scaled_param - the value of the system's process parameter
 * reference_param - the value of the reference system's process parameter
@@ -112,12 +115,17 @@ where:
 
 .. note:: The capital cost scaling equation can be applied to any capital cost stage. In the power plant costing library it is applied to the bare erected cost, while in the sCO2 library it is applied to the equipment cost.
 
-The Power Plant costing method has five arguments, self, cost_accounts, scaled_param, units, and tech.
+The Power Plant costing method has the following arguments:
 
 * self : an existing unit model or Pyomo Block
 * cost_accounts : A list of accounts or a string containing the name of a pre-named account. If the input is a list all accounts must share the same process parameter. Pre-named accounts are listed below.
 * scaled_param : The Pyomo Variable representing the accounts' scaled parameter
-* tech : The technology to cost, different technologies have different accounts.
+* units : The user must pass a string with the units the scaled_param is in. It serves as a check to make sure the costing method is being used correctly.
+* tech : The technology to cost, as different technologies have different accounts
+* ccs : which reference parameter to use, as some accounts are costed using two different reference parameters; defaults to "B", and "A" is also a valid option
+* CE_index_base : Chemical Engineering Cost Index base value; defaults to 671.1, the value for 2018
+* additional_costing_exponents : option to add a costing exponent dictionary to supplement existing account data
+* additional_costing_params : option to add a costing parameter dictionary to supplement existing account data
 
  1. Supercritical PC,
  2. Subcritical PC, 
@@ -127,7 +135,6 @@ The Power Plant costing method has five arguments, self, cost_accounts, scaled_p
  6. Natural Gas Combined Cycle (NGCC), 
  7. Advanced Ultrasupercritical PC
 
-* units : The user must pass a string with the units the scaled_param is in. It serves as a check to make sure the costing method is being used correctly.
 
 Many accounts scale using the same process parameter. For convenience the user is allowed to enter accounts as a list instead
 of having to cost each account individually. If the accounts in the list do not use the same process parameter an error will be raised.
@@ -227,12 +234,12 @@ Below is a simple example of how to add cost correlations to a flowsheet includi
     from idaes.models.unit_models.heat_exchanger import \
         (HeatExchanger, HeatExchangerFlowPattern)
     from idaes.models.properties import iapws95
-    from idaes.models_extra.power_generation.costing.power_plant_costing import \
-        (get_PP_costing, initialize_costing, display_total_plant_costs,
-         display_flowsheet_cost)
+    from idaes.models_extra.power_generation.costing.power_plant_capcost import \
+        QGESSCostingData
     
     m = ConcreteModel()
     m.fs = FlowsheetBlock(default={"dynamic": False})
+    m.fs.get_costing(year="2018")
     
     m.fs.properties = iapws95.Iapws95ParameterBlock()
     
@@ -264,9 +271,18 @@ Below is a simple example of how to add cost correlations to a flowsheet includi
         conv_fact = 3.412/1e6 
         return b.duty_MMbtu[t] == conv_fact*b.heat_duty[t]
     
-    get_PP_costing(m.fs.unit, 'Condenser', m.fs.unit.duty_MMbtu, 'MMBtu/hr', 1)
+    QGESSCostingData.get_PP_costing(
+        m.fs.unit,
+        "6.7.ccs",
+        m.fs.unit.duty_MMbtu,
+        'MMBtu/hr',
+        1,
+        CE_index_base=567.3)
+
+    QGESSCostingData.get_total_TPC(m.fs)
+
     # initialize costing equations
-    initialize_costing(fs)
+    QGESSCostingData.costing_initialization(m.fs)
     
     opt = SolverFactory('ipopt')
     opt.options = {'tol': 1e-6, 'max_iter': 50}
@@ -287,6 +303,7 @@ The function has has five arguments, self, equipment, scaled_param, temp_C, and 
 * scaled_param : The Pyomo Variable representing the component's scaled parameter
 * temp_C : The Pyomo Variable representing the hottest temperature of the piece of equiment being costed. Some pieces of equipment do not have a temperature associated with them, so the default argument is None.
 * n_equip : The number of pieces of equipment to be costed. The function will evenly divide the scaled parameter between the number passed.
+* custom_accounts : Additional accounts to cost
 
 The equipment cost is calculated using the following two equations. A temperature correction factor account for advanced materials needed at high temperatures.
 
@@ -322,12 +339,11 @@ Synchronous motors          :math:`W_{e}`     :math:`MW_{e}`
 Open drip-proof motors      :math:`W_{e}`     :math:`MW_{e}`
 =========================== ================= ==============
 
-
 Other Costing Modules
 ---------------------
 
-Air Separation Unit
-^^^^^^^^^^^^^^^^^^^
+Air Separation Unit Costing Module
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ASU costing function calculates total plant cost in the exact same way as the get_PP_costing function.
 get_ASU_cost takes two arguments: self, and scaled_param. 
@@ -335,13 +351,98 @@ get_ASU_cost takes two arguments: self, and scaled_param.
 * self - a Pyomo Block or unit model
 * scaled_param - The scaled parameter. For the ASU it is the oxygen flowrate in units of tons per day.
 
+The bare erected and total plant costs are calculated as shown in the introduction.
+There are currently no estimates for the total plant cost components, so bare erected cost will be the same as total plant cost for now.
+
+Fixed Operating & Maintenance Costs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Fixed O&M costing function adds constraints to calculate correlations associated with labor, maintenance, support, taxes and other fixed costs. The method takes the following arguments: 
+
+* b : Pyomo concrete model or flowsheet block
+* nameplate_capacity : rated plant output in MW, defaults to 650
+* labor_rate : hourly rate of plant operators in project dollar year, defaults to 38.50
+* labor_burden : a percentage multiplier used to estimate non-salary labor expenses, defaults to 30
+* operators_per_shift : average number of operators per shift, defaults to 6
+* tech : int 1-7 representing the catagories in get_PP_costing, used to determine maintenance costs, defaults to 1
+* fixed_TPC : The TPC in $MM that will be used to determine fixed O&M costs. If the value is None, the function will try to use the TPC calculated from the individual units.
+
+The following maintenance cost percentages are assumed:
+
+========== ============================= =========================
+Technology Maintenance Labor / TPC Split Maintenance Labor Percent
+========== ============================= =========================
+1          0.4                           0.016                    
+2          0.4                           0.016                    
+3          0.35                          0.03                     
+4          0.35                          0.03                     
+5          0.35                          0.03                     
+6          0.4                           0.019                    
+7          0.4                           0.016                    
+========== ============================= =========================
+
+When this method is called, the following equations are added to the flowsheet as constraints:
+
+.. math:: annual\_operating\_labor\_cost = operators\_per\_shift * labor\_rate * (1 + 0.01 * labor\_burden) * 8760
+
+.. math:: maintenance\_labor\_cost = TPC * maintenance\_labor\_TPC\_split * maintenance\_labor\_percent
+
+.. math:: admin\_and\_support\_labor\_cost = 0.25 * (annual\_operating\_labor\_cost + maintenance\_labor\_cost)
+
+.. math:: property\_taxes\_and\_insurance = 0.02 * TPC
+
+.. math:: total\_fixed\_OM\_cost = annual\_operating\_labor\_cost + maintenance\_labor\_cost + admin\_and\_support\_labor\_cost + property\_taxes\_and\_insurance + other\_fixed\_costs
+
+.. math:: maintenance\_material\_cost = \frac {TPC * maintenance\_material\_TPC\_split * maintenance\_material\_percent}{0.85 * nameplate\_capacity * 8760}
+
+where 8760 is the number of operating hours per year, 0.25, 0.02 and 0.85 are assumed cost ratio coefficients, and the variable `other_fixed_costs` exists to allow for unaccounted fixed costs (default = 0).
+
+Variable Operating & Maintenance Costs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Variable O&M costing function adds constraints to calculate correlations associated with fuel, consumable and waste disposal costs. The function may be used to calculate variable costs of producing either electricity in $/MWh or hydrogen in $/kg. The method takes the following arguments: 
+
+* self : pyomo flowsheet block
+* production_rate : pyomo var indexed by fs.time representing the net system power or the hydrogen production rate
+* resources : a list of strings for the resorces to be costed
+* rates : a list of pyomo vars for resource consumption rates
+* prices : a dict of resource prices to be added to the premade dictionary
+
+The following default prices are assumed:
+
+============================ ======= ==========================
+Stream                       Price   Units                     
+============================ ======= ==========================
+natural_gas                  4.42    USD (2018) per Million BTU
+coal                         51.96   USD (2018) per ton        
+water                        1.90E-3 USD (2018) per gallon     
+water_treatment_chemicals    550     USD (2018) per ton        
+ammonia                      300     USD (2018) per ton        
+SCR_catalyst                 150     USD (2018) per cubic foot 
+triethylene_glycol           6.80    USD (2018) per gallon     
+SCR_catalyst_waste           2.50    USD (2018) per cubic foot 
+triethylene_glycol_waste     0.35    USD (2018) per gallon     
+amine_purification_unit      38      USD (2018) per ton        
+thermal_reclaimer_unit_waste 38      USD (2018) per ton        
+============================ ======= ==========================
+
+When this method is called, the following equations are added to the flowsheet as constraints:
+
+.. math:: variable\_operating\_costs_{t, r} = resource\_prices_r * resource\_rates_{r, t} * 365 * 0.85
+
+.. math:: total\_variable\_OM\_costs_t = \Sigma_r (variable\_operating\_costs_{t, r}) + maintenance\_material\_cost + other\_variable\_costs_t
+
+where variables are indexed by resource `r` and time `t`, 0.85 is an assumed price ratio coefficient, and the variable `other_variable_costs` exists to allow for unaccounted variable costs (default = 0).
+
 Utility Functions
 -----------------
 
 Initialize Costing
 ^^^^^^^^^^^^^^^^^^
 
-The costing_initialization function will initialize all the variable within every costing block in the flowsheet.
+The `initialize_fixed_OM_costs` will initialize all fixed cost variable and constraint in the costing block. The `initialize_variable_OM_costs` does the same, and checks whether costing should assume electricity or hydrogen production.
+
+The `costing_initialization` function will initialize all the variable within every costing block in the flowsheet.
 It takes one argument, the flowsheet object. It should be called after all the calls to 'get costing' functions are 
 completed.
 
