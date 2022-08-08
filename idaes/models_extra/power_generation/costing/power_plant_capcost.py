@@ -1423,9 +1423,12 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 c.variable_operating_costs[t, r]
                 == (
                     pyunits.convert(
-                        resource_prices[r] * resource_rates[r][t] * 
-                        c.parent_block().time_units *
-                        365 * 85 / 100,
+                        resource_prices[r]
+                        * resource_rates[r][t]
+                        * c.parent_block().time_units
+                        * 365
+                        * 85
+                        / 100,
                         pyunits.USD_2018,
                     )
                 )
@@ -1471,9 +1474,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
             def total_variable_cost_rule_hydrogen(c, t):
                 return (
                     c.total_variable_OM_cost[t]
-                    == sum(
-                        c.variable_operating_costs[t, r] for r in resources
-                    )
+                    == sum(c.variable_operating_costs[t, r] for r in resources)
                     + c.other_variable_costs[t]
                 )
 
