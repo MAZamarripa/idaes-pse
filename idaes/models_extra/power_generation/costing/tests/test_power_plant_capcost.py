@@ -1024,7 +1024,7 @@ def test_OM_costing():
     m = pyo.ConcreteModel()
 
     # Add a flowsheet object to the model
-    m.fs = FlowsheetBlock(default={"dynamic": False})
+    m.fs = FlowsheetBlock(default={"dynamic": True, "time_units": pyunits.s})
     m.fs.costing = QGESSCosting()
 
     # build fixed costs
@@ -1088,7 +1088,7 @@ def test_OM_costing():
 
     assert pytest.approx(28.094, abs=0.1) == (pyo.value(m.fs.total_fixed_OM_cost))
 
-    assert pytest.approx(3.587, abs=0.1) == (
+    assert pytest.approx(1.589, abs=0.1) == (
         pyo.value(m.fs.costing.total_variable_OM_cost[0])
     )
 
