@@ -149,7 +149,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 labor_rate=labor_rate,
                 labor_burden=labor_burden,
                 operators_per_shift=operators_per_shift,
-                tech=tech
+                tech=tech,
             )
 
         if variable_OM is True:
@@ -160,7 +160,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         if fixed_OM and variable_OM:
             # total overnight cost requires fixed costs
             self.pct_TPC = Param(
-                initialize=20.2/100, doc="Fixed percentaje for other owners cost"
+                initialize=20.2 / 100, doc="Fixed percentaje for other owners cost"
             )
             # self.land_cost = Param(initialize=land_cost, doc='percentaje of total plant cost')
             self.six_month_labor = Expression(
@@ -184,14 +184,19 @@ class QGESSCostingData(FlowsheetCostingBlockData):
 
             if waste is not None:
                 self.waste_costs_OC = Expression(
-                    expr= (sum(self.variable_operating_costs[0, i] for i in waste) / (85 / 100) / 12
+                    expr=(
+                        sum(self.variable_operating_costs[0, i] for i in waste)
+                        / (85 / 100)
+                        / 12
+                    )
                 )
-            )
             if chemicals is not None:
                 self.chemical_costs_OC = Expression(
-                    expr= (sum(self.variable_operating_costs[0, i] for i in chemicals)/ 2  # six months of chemicals
+                    expr=(
+                        sum(self.variable_operating_costs[0, i] for i in chemicals)
+                        / 2  # six months of chemicals
+                    )
                 )
-            )
 
             self.non_fuel_and_waste_OC = Expression(
                 expr=(
@@ -202,8 +207,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
             )
 
             self.total_overnight_capital = Expression(
-                expr=
-                self.total_TPC
+                expr=self.total_TPC
                 # pre production costs
                 + self.six_month_labor
                 + self.maintenance_material_cost / 12  # 1 month maintenance materials
@@ -212,9 +216,12 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 # inventory capital costs
                 + (self.fuel_cost_OC if fuel is not None else 0)  # 60 day fuel supply
                 # Other costs
-                + (self.chemical_costs_OC if waste is not None else 0) # Initial Cost for Catalyst and Chemicals
+                + (
+                    self.chemical_costs_OC if waste is not None else 0
+                )  # Initial Cost for Catalyst and Chemicals
                 + (land_cost if land_cost is not None else 0)
-                + self.total_TPC * self.pct_TPC  # other owners costs (other + spare parts + financing + other pre-production)
+                + self.total_TPC
+                * self.pct_TPC  # other owners costs (other + spare parts + financing + other pre-production)
             )
 
             self.tasc_toc_factor = Param(
@@ -255,7 +262,8 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                         self.annualized_cost
                         + self.total_fixed_OM_cost
                         + self.total_variable_OM_cost[0] * self.capacity_factor
-                    ) * 1e6
+                    )
+                    * 1e6
                     / tonne_CO2_capture
                 )
 
@@ -1296,7 +1304,8 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 + c.property_taxes_and_insurance
                 + c.other_fixed_costs
             )
-        power_plant=False
+
+        power_plant = False
         # technology specific percentage of TPC
         @b.Constraint()
         def maintenance_material_cost_rule(c):
@@ -1315,7 +1324,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                     * c.maintenance_material_TPC_split
                     * c.maintenance_material_percent
                     / 0.85
-                    * (85/100)
+                    * (85 / 100)
                 )
 
     def get_variable_OM_costs(self, production_rate, resources, rates, prices={}):
