@@ -1,5 +1,5 @@
-Power Plant Costing Library
-===========================
+Power Plant Costing Using NETL Baseline Reports
+===============================================
 
 .. contents:: Contents 
     :depth: 4
@@ -7,9 +7,10 @@ Power Plant Costing Library
 Introduction
 ------------
 
-.. note:: The power plant costing method is available for most of the unit operations in power plants (Boiler, Feed Water Heaters, Compressor, Turbine, Condenser, etc.).
+.. note:: This document outlines an example power plant costing library to support IDAES power generation unit models. The power plant costing method is available for most of the unit operations in power plants (Boiler, Feed Water Heaters, Compressor, Turbine, Condenser, etc.).
 
-A capital cost methodology is developed in this module, both bare and erected cost and total plant cost are calculated based on costing correlations. 
+A capital cost methodology is developed in this module, both bare and erected cost and total plant cost are calculated based on costing correlations.
+
 The Power Plant Costing Library contains 5 main costing functions: `get_PP_costing`, `get_SCO2_unit_cost`, `get_ASU_cost`, `get_fixed_OM_costs`, and `get_variable_OM_costs`.
 The first function (`get_PP_costing`) can be called to include cost correlations for equipment typically used in simulation of 7 technologies: 
 
@@ -55,7 +56,7 @@ and project contingency, all of which are typically estimated as a percentage of
 All costing methods calculate the bare erected and total plant costs. The sCO2 library is currently the only one
 that includes an equipment cost. 
 
-Dollar year scaling
+Dollar Year scaling
 ^^^^^^^^^^^^^^^^^^^
 
 The value of money decreases over time due to inflation and missed investment opportunity.
@@ -89,7 +90,7 @@ To manually set the dollar year the user must call `m.fs.get_costing(year=2019)`
 Power Plant Costing Module
 --------------------------
 
-A default costing module has been developed based on the capital cost scaling methodology from 
+A costing module has been developed based on the capital cost scaling methodology from 
 NETL's Bituminous Baseline Report Rev 4 [1]. It provides costing correlations for common 
 variants of pulverized coal (PC), integrated gassification combined cycle (IGCC), and 
 natural gas combined cycle (NGCC) power generation technologies. Users should refer to 
@@ -224,7 +225,7 @@ all variables and parameters associated with costing are stored.
 
 Example
 ^^^^^^^
-Below is a simple example of how to add cost correlations to a flowsheet including a heat exchanger using the default IDAES costing module.
+Below is an example of how to add cost correlations to a flowsheet including a heat exchanger using the  IDAES power plant costing module:
 
 
 .. code:: python
