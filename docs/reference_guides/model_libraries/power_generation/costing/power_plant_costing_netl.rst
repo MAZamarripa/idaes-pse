@@ -1,7 +1,7 @@
 Power Plant Costing Using NETL Baseline Reports
 ===============================================
 
-.. contents:: Contents 
+.. contents:: Contents
     :depth: 4
 
 Introduction
@@ -33,8 +33,8 @@ Details are given for each method later in this documentation; however, there ar
 Costing sub-blocks
 ^^^^^^^^^^^^^^^^^^
 
-In general, when `get_PP_costing or get_sCO2_unit_cost` is called on an instance of a unit model, a new sub-block is created 
-on that unit named `costing` (i.e. `flowsheet.unit.costing`). All variables and constraints related to costing will be 
+In general, when `get_PP_costing or get_sCO2_unit_cost` is called on an instance of a unit model, a new sub-block is created
+on that unit named `costing` (i.e. `flowsheet.unit.costing`). All variables and constraints related to costing will be
 constructed within this new block (see detailed documentation for each unit for details on these variables and constraints).
 
 
@@ -54,7 +54,7 @@ and project contingency, all of which are typically estimated as a percentage of
 .. note:: The equations above assume the additional costs (eng_fee or process and project contingencies) are given as percentages of BEC and TPC.
 
 All costing methods calculate the bare erected and total plant costs. The sCO2 library is currently the only one
-that includes an equipment cost. 
+that includes an equipment cost.
 
 Dollar Year scaling
 ^^^^^^^^^^^^^^^^^^^
@@ -69,16 +69,16 @@ In the costing functions this equation is built into the constraint for the lowe
 
 Table 1. Base years of costing modules
 
-=========================== ====================== 
+=========================== ======================
 Module                      Base Year
 =========================== ======================
 Power Plant Costing         2018
-sCO2 Costing                2017     
+sCO2 Costing                2017
 ASU                         2011
-=========================== ====================== 
+=========================== ======================
 
-The first time a 'get costing' function is called for a unit operation within a flowsheet, an additional `costing` block is created 
-on the flowsheet object (i.e. `flowsheet.costing`) in order to hold any global parameters relating to costing. The most 
+The first time a 'get costing' function is called for a unit operation within a flowsheet, an additional `costing` block is created
+on the flowsheet object (i.e. `flowsheet.costing`) in order to hold any global parameters relating to costing. The most
 common of these paramters is the CE index parameter. The CE index will be set to the base year of the method called.
 
 .. note:: The global paramters are created when the first instance of `get_costing` is called and use the values provided there for initialization. Subsequent `get_costing` calls use the existing paramters, and do not change the initialized values. i.e. any "year" argument provided to a `get_costing` call after the first will be ignored.
@@ -97,11 +97,11 @@ natural gas combined cycle (NGCC) power generation technologies. Users should re
 reference [2] for details of the costing correlations, however, a summary is provided below.
 
 
-The module breaks down the cost of a power plant into separate accounts for each system 
+The module breaks down the cost of a power plant into separate accounts for each system
 within the plant. The accounts are scaled based on a process parameter that determines
 the size of the equipment needed. The cost of the account is computed based on the scaled parameter,
 reference parameter, reference cost, and scaling
-exponent determined by NETL in [1]. This equation is similar to a six tenth factor approach, 
+exponent determined by NETL in [1]. This equation is similar to a six tenth factor approach,
 however, the exponents have been trained using several vendor quotes.
 
 .. math:: scaled\_cost = reference\_cost*(\frac{scaled\_param}{reference\_param})^\alpha
@@ -129,11 +129,11 @@ The Power Plant costing method has the following arguments:
 * additional_costing_params : option to add a costing parameter dictionary to supplement existing account data
 
  1. Supercritical PC,
- 2. Subcritical PC, 
- 3. Two-stage, slurry-feed IGCC 
+ 2. Subcritical PC,
+ 3. Two-stage, slurry-feed IGCC
  4. Single-stage, slurry-feed IGCC
  5. Single-stage, dry-feed IGCC,
- 6. Natural Gas Combined Cycle (NGCC), 
+ 6. Natural Gas Combined Cycle (NGCC),
  7. Advanced Ultrasupercritical PC
 
 
@@ -148,13 +148,13 @@ accounts for each technology can be found in the tables below.
 Table 2. Pre-named Accounts for PC technologies
 
 =========================== ============================ ============================ ==========
-Pre-named Account           Accounts Included            Process Parameter            Units      
+Pre-named Account           Accounts Included            Process Parameter            Units
 =========================== ============================ ============================ ==========
-Coal Handling               1.1, 1.2, 1.3, 1.4, 1.9a     Coal Feed Rate               lb/hr           
-Sorbent Handling            1.5, 1.6, 1.7, 1.8, 1.9b     Limestone Feed Rate          lb/hr  
-Coal Feed                   2.1, 2.2, 2.9a               Coal Feed Rate               lb/hr     
+Coal Handling               1.1, 1.2, 1.3, 1.4, 1.9a     Coal Feed Rate               lb/hr
+Sorbent Handling            1.5, 1.6, 1.7, 1.8, 1.9b     Limestone Feed Rate          lb/hr
+Coal Feed                   2.1, 2.2, 2.9a               Coal Feed Rate               lb/hr
 Sorbent Feed                2.5, 2.6, 2.9b               Limestone Feed Rate          lb/hr
-Feedwater System            3.1, 3.3                     HP BFW Flow Rate             lb/hr 
+Feedwater System            3.1, 3.3                     HP BFW Flow Rate             lb/hr
 PC Boiler                   4.9                          HP BFW Flow Rate             lb/hr
 Steam Turbine               8.1                          Steam Turbine Power          kW
 Condenser                   8.3                          Condenser Duty               MMBtu/hr
@@ -166,11 +166,11 @@ Ash Handling                10.6, 10.7, 10.9             Total Ash Flow         
 Table 3. Pre-named Accounts for IGCC technologies
 
 =========================== ========================================= ============================ ==========
-Pre-named Account           Accounts Included                         Process Parameter            Units      
+Pre-named Account           Accounts Included                         Process Parameter            Units
 =========================== ========================================= ============================ ==========
-Coal Handling               1.1, 1.2, 1.3, 1.4, 1.9                   Coal Feed Rate               lb/hr           
-Coal Feed                   2.1, 2.2, 2.9                             Coal Feed Rate               lb/hr     
-Feedwater System            3.1, 3.3                                  HP BFW Flow Rate             lb/hr 
+Coal Handling               1.1, 1.2, 1.3, 1.4, 1.9                   Coal Feed Rate               lb/hr
+Coal Feed                   2.1, 2.2, 2.9                             Coal Feed Rate               lb/hr
+Feedwater System            3.1, 3.3                                  HP BFW Flow Rate             lb/hr
 Gasifier                    4.1                                       Coal Feed Rate               lb/hr
 Syngas Cooler               4.2                                       Syngas Cooler Duty           MMBtu/hr
 ASU                         4.3a                                      Oxygen Production            tpd
@@ -188,27 +188,27 @@ Slag Handling               10.1, 10.2, 10.3, 10.6, 10.7, 10.8, 10.9  Slag Produ
 Table 4. Pre-named Accounts for NGCC technologies
 
 =========================== ============================ ============================ ==========
-Pre-named Account           Accounts Included            Process Parameter            Units      
+Pre-named Account           Accounts Included            Process Parameter            Units
 =========================== ============================ ============================ ==========
-Feedwater System            3.1, 3.3                     HP BFW Flow Rate             lb/hr 
-Combustion Turbine          6.1, 6.3                     Fuel Gas Flow                lb/hr  
-HRSG                        7.1, 7.2                     HRSG Duty                    MMBtu/hr     
+Feedwater System            3.1, 3.3                     HP BFW Flow Rate             lb/hr
+Combustion Turbine          6.1, 6.3                     Fuel Gas Flow                lb/hr
+HRSG                        7.1, 7.2                     HRSG Duty                    MMBtu/hr
 Steam Turbine               8.1                          Steam Turbine Power          kW
 Condenser                   8.3                          Condenser Duty               MMBtu/hr
 Cooling Tower               9.1                          Cooling Tower Duty           MMBtu/hr
 Circulating Water System    9.2, 9.3, 9.4, 9.6, 9.7      Circulating Water Flow Rate  gpm
 =========================== ============================ ============================ ==========
 
-The library has a 7th technology of AUSC. These operate at higher temperatures that traditional 
+The library has a 7th technology of AUSC. These operate at higher temperatures that traditional
 PC plants. The library contains modified correlation for the PC boiler, steam turbine, and steam piping
 to reflect the use of high temperature materials.
 
 Table 5. Pre-named Accounts for AUSC technologies
 
 =========================== ============================ ============================ ==========
-Pre-named Account           Accounts Included            Process Parameter            Units      
+Pre-named Account           Accounts Included            Process Parameter            Units
 =========================== ============================ ============================ ==========
-PC Boiler                   4.9                          HP BFW Flow Rate             lb/hr 
+PC Boiler                   4.9                          HP BFW Flow Rate             lb/hr
 Steam Turbine               8.1                          Steam Turbine Power          kW
 Steam Piping                8.4                          HP BFW Flow Rate             lb/hr
 =========================== ============================ ============================ ==========
@@ -239,37 +239,38 @@ Below is an example of how to add cost correlations to a flowsheet including a h
         QGESSCostingData
     
     m = ConcreteModel()
-    m.fs = FlowsheetBlock(default={"dynamic": False})
+    m.fs = FlowsheetBlock(dynamic=False})
     m.fs.get_costing(year="2018")
     
     m.fs.properties = iapws95.Iapws95ParameterBlock()
-    
-    m.fs.unit = HeatExchanger(default={
-                "shell": {"property_package": m.fs.properties},
-                "tube": {"property_package": m.fs.properties},
-                "flow_pattern": HeatExchangerFlowPattern.countercurrent})
+
+    m.fs.unit = HeatExchanger(
+        shell={"property_package": m.fs.properties},
+        tube={"property_package": m.fs.properties},
+        flow_pattern=HeatExchangerFlowPattern.countercurrent
+    )
     # set inputs
     m.fs.unit.shell_inlet.flow_mol[0].fix(100)     # mol/s
     m.fs.unit.shell_inlet.enth_mol[0].fix(3500)    # j/s
-    m.fs.unit.shell_inlet.pressure[0].fix(101325)  # Pa 
-    
+    m.fs.unit.shell_inlet.pressure[0].fix(101325)  # Pa
+
     m.fs.unit.tube_inlet.flow_mol[0].fix(100)
     m.fs.unit.tube_inlet.enth_mol[0].fix(4000)
     m.fs.unit.tube_inlet.pressure[0].fix(101325.0)
-    
+
     m.fs.unit.area.fix(1000)  # m2
     m.fs.unit.overall_heat_transfer_coefficient.fix(100)  # W/m2K
-    
+
     m.fs.unit.initialize()
-    
+
     m.fs.unit.duty_MMbtu = pyo.Var(
         m.fs.time,
         initialize=1e5,
         doc="Condenser duty in MMbtu/hr")
-    
+
     @m.fs.unit.Constraint(m.fs.time)
     def duty_conversion(b, t):
-        conv_fact = 3.412/1e6 
+        conv_fact = 3.412/1e6
         return b.duty_MMbtu[t] == conv_fact*b.heat_duty[t]
     
     QGESSCostingData.get_PP_costing(
@@ -288,7 +289,7 @@ Below is an example of how to add cost correlations to a flowsheet including a h
     opt = SolverFactory('ipopt')
     opt.options = {'tol': 1e-6, 'max_iter': 50}
     results = opt.solve(m, tee=True)
-    
+
     display_total_plant_costs(fs)
     display_flowsheet_cost(fs)
 
@@ -311,7 +312,7 @@ The equipment cost is calculated using the following two equations. A temperatur
 .. math:: equipment\_cost = reference\_cost*(scaled\_parameter)^\alpha * temperature\_factor
 
 .. math:: temperature\_factor = 1 + c*(T - T_{bp}) + d*(T - T_{bp})^2 & : if T \geq T_{bp}\\ (if  T > 550, otherwise  temperature\_factor = 1)
-    
+
 .. math:: T_{bp} = 550 C
 
 The bare erected and total plant costs are calculated as shown in the introduction.
@@ -322,19 +323,19 @@ The last one is for the scaled parameter divided by n_equip.
 
 Table 6. sCO2 Costing Library Components
 
-=========================== ================= ============== 
-Component                   Scaling Parameter Units               
-=========================== ================= ============== 
+=========================== ================= ==============
+Component                   Scaling Parameter Units
+=========================== ================= ==============
 Coal-fired heaters          :math:`Q`         :math:`MW_{th}`
 Natural gas-fired heaters   :math:`Q`         :math:`MW_{th}`
 Recuperators                :math:`UA`        :math:`W/K`
 Direct air coolers          :math:`UA`        :math:`W/K`
 Radial turbines             :math:`W_{sh}`    :math:`MW_{sh}`
 Axial turbines              :math:`W_{sh}`    :math:`MW_{sh}`
-IG centrifugal compressors  :math:`W_{sh}`    :math:`MW_{sh}`       
-Barrel type compressors     :math:`V_{in}`    :math:`m^3/s`     
-Gearboxes                   :math:`W_{e}`     :math:`MW_{sh}`   
-Generators                  :math:`W_{e}`     :math:`MW_{e}`   
+IG centrifugal compressors  :math:`W_{sh}`    :math:`MW_{sh}`
+Barrel type compressors     :math:`V_{in}`    :math:`m^3/s`
+Gearboxes                   :math:`W_{e}`     :math:`MW_{sh}`
+Generators                  :math:`W_{e}`     :math:`MW_{e}`
 Explosion proof motors      :math:`W_{e}`     :math:`MW_{e}`
 Synchronous motors          :math:`W_{e}`     :math:`MW_{e}`
 Open drip-proof motors      :math:`W_{e}`     :math:`MW_{e}`
@@ -347,7 +348,7 @@ Air Separation Unit Costing Module
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ASU costing function calculates total plant cost in the exact same way as the get_PP_costing function.
-get_ASU_cost takes two arguments: self, and scaled_param. 
+get_ASU_cost takes two arguments: self, and scaled_param.
 
 * self - a Pyomo Block or unit model
 * scaled_param - The scaled parameter. For the ASU it is the oxygen flowrate in units of tons per day.
@@ -453,7 +454,7 @@ Total Flowsheet Cost Constraint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For optimization, a constraint summing all the total plant costs is required.
-Calling build_flowsheet_cost_constraint(m) creates a variable named m.fs.flowsheet_cost 
+Calling build_flowsheet_cost_constraint(m) creates a variable named m.fs.flowsheet_cost
 and builds the required constraint at the flowsheet level.
 
 .. note:: The costing libraries can be used for simulation or optimization. For simulation, costing constraints can be built and solved after the flowsheet has been solved. For optimization, the costing constraints will need to be solved with the flowsheet.
