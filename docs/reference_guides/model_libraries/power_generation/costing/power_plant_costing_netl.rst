@@ -7,7 +7,7 @@ Power Plant Costing Using NETL Baseline Reports
 Introduction
 ------------
 
-.. note:: This document outlines an example power plant costing library to support IDAES power generation unit models. The power plant costing method is available for most of the unit operations in power plants (Boiler, Feed Water Heaters, Compressor, Turbine, Condenser, etc.).
+.. note:: This document outlines an example power plant costing library to support IDAES power generation unit models. The power plant costing method is available for most of the unit operations in power plants (Boiler, Feed Water Heaters, Compressor, Turbine, Condenser, etc.). For a general overview of costing capabilities in IDAES, see the :ref:`IDAES Process Costing Framework<reference_guides/core/costing/costing_framework:IDAES Process Costing Framework>`.
 
 A capital cost methodology is developed in this module, both bare and erected cost and total plant cost are calculated based on costing correlations.
 
@@ -239,15 +239,15 @@ Below is an example of how to add cost correlations to a flowsheet including a h
         QGESSCostingData
     
     m = ConcreteModel()
-    m.fs = FlowsheetBlock(default={"dynamic": False})
+    m.fs = FlowsheetBlock(dynamic=False})
     m.fs.get_costing(year="2018")
     
     m.fs.properties = iapws95.Iapws95ParameterBlock()
     
-    m.fs.unit = HeatExchanger(default={
-                "shell": {"property_package": m.fs.properties},
-                "tube": {"property_package": m.fs.properties},
-                "flow_pattern": HeatExchangerFlowPattern.countercurrent})
+    m.fs.unit = HeatExchanger(
+                shell={"property_package": m.fs.properties},
+                tube={"property_package": m.fs.properties},
+                flow_pattern=HeatExchangerFlowPattern.countercurrent)
     # set inputs
     m.fs.unit.shell_inlet.flow_mol[0].fix(100)     # mol/s
     m.fs.unit.shell_inlet.enth_mol[0].fix(3500)    # j/s
@@ -392,7 +392,7 @@ When this method is called, the following equations are added to the flowsheet a
 
 .. math:: property\_taxes\_and\_insurance = 0.02 * TPC
 
-.. math:: total\_fixed\_OM\_cost = annual\_operating\_labor\_cost + maintenance\_labor\_cost + admin\_and\_support\_labor\_cost + property\_taxes\_and\_insurance + other\_fixed\_costs
+.. math:: total\_fixed\_OM\_cost = annual\_operating\_labor\_cost + maintenance\_labor\_cost + \\ admin\_and\_support\_labor\_cost + property\_taxes\_and\_insurance + other\_fixed\_costs
 
 .. math:: maintenance\_material\_cost = \frac {TPC * maintenance\_material\_TPC\_split * maintenance\_material\_percent}{0.85 * nameplate\_capacity * 8760}
 
