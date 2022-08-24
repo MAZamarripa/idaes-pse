@@ -1419,7 +1419,7 @@ def get_fixed_OM_costs(
         operators_per_shift: average number of operators per shift
         tech: int 1-7 representing the catagories in get_PP_costing, used to
             determine maintenance costs
-        TPC_value: The TPC in $MM that will be used to determine fixed O&M
+        fixed_TPC: The TPC in $MM that will be used to determine fixed O&M
         costs. If the value is None, the function will try to use the TPC
             calculated from the individual units.
 

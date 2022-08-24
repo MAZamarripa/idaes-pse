@@ -103,8 +103,15 @@ class QGESSCostingData(FlowsheetCostingBlockData):
 
     def build_process_costs(
         self,
+        # arguments related to Fixed OM costs
         total_plant_cost=None,
-        land_cost=0,
+        nameplate_capacity=650,
+        labor_rate=38.50,
+        labor_burden=30,
+        operators_per_shift=6,
+        tech=1,
+        # arguments related to total owners costs
+        land_cost=None,
         net_power=None,
         resources=None,
         rates=None,
@@ -112,6 +119,8 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         fixed_OM=True,
         variable_OM=False,
         fuel=None,
+        chemicals=None,
+        waste=None,
         tonne_CO2_capture=None,
     ):
         """
@@ -124,22 +133,24 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         3. self.aggregate_variable_operating_cost
         4. self.aggregate_flow_costs (indexed by flow type)
         """
-        print("var cost")
-        print(type(resources))
-        print(type(rates))
-        print(type(prices))
-        print("done")
+
         if total_plant_cost is None:
             self.get_total_TPC()
-        else:
-            self.total_TPC = Var(initialize=0, bounds=(0, 1e4), doc="total TPC in $MM")
+        # else:
+        #     self.total_TPC = Var(initialize=0, bounds=(0, 1e4), doc="total TPC in $MM")
 
-            @self.Constraint()
-            def total_TPC_eq(c):
-                return c.total_TPC == total_plant_cost
+        #     @self.Constraint()
+        #     def total_TPC_eq(c):
+        #         return c.total_TPC == total_plant_cost
 
         if fixed_OM is True:
-            self.get_fixed_OM_costs()
+            self.get_fixed_OM_costs(
+                nameplate_capacity=nameplate_capacity,
+                labor_rate=labor_rate,
+                labor_burden=labor_burden,
+                operators_per_shift=operators_per_shift,
+                tech=tech,
+            )
 
         if variable_OM is True:
             # get_variable_OM_costs(fs, production_rate, resources, rates, prices={}):
@@ -149,7 +160,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         if fixed_OM and variable_OM:
             # total overnight cost requires fixed costs
             self.pct_TPC = Param(
-                initialize=20.31, doc="Fixed percentaje of total plant cost"
+                initialize=20.2 / 100, doc="Fixed percentaje for other owners cost"
             )
             # self.land_cost = Param(initialize=land_cost, doc='percentaje of total plant cost')
             self.six_month_labor = Expression(
@@ -165,26 +176,52 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 self.fuel_cost_OC = Expression(
                     expr=self.variable_operating_costs[0, fuel]
                     / (85 / 100)
-                    * 12
+                    / 12
                     * 2.25,
                     doc="Owner's costs - 2.25 months of fuel costs",
                 )
                 non_fuel_resources.remove(fuel)  # remove fuel from the list
+
+            if waste is not None:
+                self.waste_costs_OC = Expression(
+                    expr=(
+                        sum(self.variable_operating_costs[0, i] for i in waste)
+                        / (85 / 100)
+                        / 12
+                    )
+                )
+            if chemicals is not None:
+                self.chemical_costs_OC = Expression(
+                    expr=(
+                        sum(self.variable_operating_costs[0, i] for i in chemicals)
+                        / 2  # six months of chemicals
+                    )
+                )
 
             self.non_fuel_and_waste_OC = Expression(
                 expr=(
                     sum(self.variable_operating_costs[0, i] for i in non_fuel_resources)
                 )
                 / (85 / 100)
-                * 3
+                / 12
             )
 
             self.total_overnight_capital = Expression(
-                expr=self.total_fixed_OM_cost * self.pct_TPC
+                expr=self.total_TPC
+                # pre production costs
                 + self.six_month_labor
-                + (self.fuel_cost_OC if fuel is not None else 0)
-                + self.non_fuel_and_waste_OC
-                + self.land_cost
+                + self.maintenance_material_cost / 12  # 1 month maintenance materials
+                + self.non_fuel_and_waste_OC  # 1 month non fuel consumables
+                + (self.waste_costs_OC if waste is not None else 0)  # 1 month waste
+                # inventory capital costs
+                + (self.fuel_cost_OC if fuel is not None else 0)  # 60 day fuel supply
+                # Other costs
+                + (
+                    self.chemical_costs_OC if waste is not None else 0
+                )  # Initial Cost for Catalyst and Chemicals
+                + (land_cost if land_cost is not None else 0)
+                + self.total_TPC
+                * self.pct_TPC  # other owners costs (other + spare parts + financing + other pre-production)
             )
 
             self.tasc_toc_factor = Param(
@@ -226,6 +263,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                         + self.total_fixed_OM_cost
                         + self.total_variable_OM_cost[0] * self.capacity_factor
                     )
+                    * 1e6
                     / tonne_CO2_capture
                 )
 
@@ -1137,7 +1175,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
             operators_per_shift: average number of operators per shift
             tech: int 1-7 representing the catagories in get_PP_costing, used to
                 determine maintenance costs
-            TPC_value: The TPC in $MM that will be used to determine fixed O&M
+            fixed_TPC: The TPC in $MM that will be used to determine fixed O&M
             costs. If the value is None, the function will try to use the TPC
                 calculated from the individual units.
 
@@ -1198,33 +1236,33 @@ class QGESSCostingData(FlowsheetCostingBlockData):
 
         # make vars
         b.annual_operating_labor_cost = Var(
-            initialize=1, bounds=(0, 100), doc="annual labor cost in $MM/yr"
+            initialize=1, bounds=(0, 1e4), doc="annual labor cost in $MM/yr"
         )
         b.maintenance_labor_cost = Var(
-            initialize=1, bounds=(0, 100), doc="maintenance labor cost in $MM/yr"
+            initialize=1, bounds=(0, 1e4), doc="maintenance labor cost in $MM/yr"
         )
         b.admin_and_support_labor_cost = Var(
-            initialize=1, bounds=(0, 100), doc="admin and support labor cost in $MM/yr"
+            initialize=1, bounds=(0, 1e4), doc="admin and support labor cost in $MM/yr"
         )
         b.property_taxes_and_insurance = Var(
             initialize=1,
-            bounds=(0, 100),
+            bounds=(0, 1e4),
             doc="property taxes and insurance cost in $MM/yr",
         )
         b.total_fixed_OM_cost = Var(
-            initialize=4, bounds=(0, 100), doc="total fixed O&M costs in $MM/yr"
+            initialize=4, bounds=(0, 1e4), doc="total fixed O&M costs in $MM/yr"
         )
 
         # variable for user to assign other fixed costs to, fixed to 0 by default
         b.other_fixed_costs = Var(
-            initialize=0, bounds=(0, 100), doc="other fixed costs in $MM/yr"
+            initialize=0, bounds=(0, 1e4), doc="other fixed costs in $MM/yr"
         )
         b.other_fixed_costs.fix(0)
 
         # maintenance material cost is technically a variable cost, but it makes
         # more sense to include with the fixed costs becuase it uses TPC
         b.maintenance_material_cost = Var(
-            initialize=5, bounds=(0, 100), doc="cost of maintenance materials in $/MWh"
+            initialize=5, bounds=(0, 1e4), doc="cost of maintenance materials in $/MWh"
         )
 
         # create constraints
@@ -1267,18 +1305,27 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 + c.other_fixed_costs
             )
 
+        power_plant = False
         # technology specific percentage of TPC
         @b.Constraint()
         def maintenance_material_cost_rule(c):
-            return c.maintenance_material_cost == (
-                TPC
-                * 1e6
-                * c.maintenance_material_TPC_split
-                * c.maintenance_material_percent
-                / 0.85
-                / c.nameplate_capacity
-                / 8760
-            )
+            if power_plant is True:
+                return c.maintenance_material_cost == (
+                    TPC
+                    * c.maintenance_material_TPC_split
+                    * c.maintenance_material_percent
+                    / 0.85
+                    / c.nameplate_capacity
+                    / 8760
+                )
+            else:
+                return c.maintenance_material_cost == (
+                    TPC
+                    * c.maintenance_material_TPC_split
+                    * c.maintenance_material_percent
+                    / 0.85
+                    * (85 / 100)
+                )
 
     def get_variable_OM_costs(self, production_rate, resources, rates, prices={}):
         """
@@ -1288,7 +1335,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         at once. A total variable cost is created for each point in fs.time.
 
         Args:
-            fs: pyomo flowsheet block
+            self: pyomo flowsheet block
             production_rate: pyomo var indexed by fs.time representing the net
                 system power or the hydrogen production rate
             resources: a list of strings for the resorces to be costed
@@ -1337,9 +1384,9 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         if len(resources) != len(rates):
             raise Exception("resources and rates must be lists of the same length")
 
-        # # check if flowsheet level costing block exists
-        # if not hasattr(fs, "costing"):
-        #     self.get_costing(year="2018")
+        # check if flowsheet level costing block exists
+        if not hasattr(self, "costing"):
+            self.get_costing(year="2018")
 
         # dictionary of default prices
         default_prices = {
@@ -1376,32 +1423,32 @@ class QGESSCostingData(FlowsheetCostingBlockData):
 
         # if costing power make vars in fs.costing, if costing hydrogen make vars
         # in fs.H2_costing
-        # if mode == "power":
-        #     costing = self.costing
-        # elif mode == "hydrogen":
-        #     self.H2_costing = Block()
-        #     costing = self.H2_costing
+        if mode == "power":
+            costing = self.costing
+        elif mode == "hydrogen":
+            self.H2_costing = Block()
+            costing = self.H2_costing
 
         # make vars
-        self.variable_operating_costs = Var(
-            self.parent_block().time,
+        costing.variable_operating_costs = Var(
+            self.time,
             resources,
             initialize=1,
             doc="variable operating costs",
             units=cost_units,
         )
 
-        self.other_variable_costs = Var(
-            self.parent_block().time,
+        costing.other_variable_costs = Var(
+            self.time,
             initialize=0,
             doc="a variable to include non-standard O&M costs",
             units=cost_units,
         )
         # assume the user is not using this
-        self.other_variable_costs.fix(0)
+        costing.other_variable_costs.fix(0)
 
-        self.total_variable_OM_cost = Var(
-            self.parent_block().time,
+        costing.total_variable_OM_cost = Var(
+            self.time,
             initialize=1,
             doc="total variable operating and maintenance costs",
             units=cost_units,
@@ -1410,7 +1457,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         # # make constraints
         # if mode == "power":
 
-        @self.Constraint(self.parent_block().time, resources)
+        @costing.Constraint(self.time, resources)
         def variable_cost_rule_power(c, t, r):
             # return costing.variable_operating_costs[t, r] == (
             #     pyunits.convert(
@@ -1423,7 +1470,12 @@ class QGESSCostingData(FlowsheetCostingBlockData):
                 c.variable_operating_costs[t, r]
                 == (
                     pyunits.convert(
-                        resource_prices[r] * resource_rates[r][t] * 365 * 85 / 100,
+                        resource_prices[r]
+                        * resource_rates[r][t]
+                        * c.parent_block().time_units
+                        * 365
+                        * 85
+                        / 100,
                         pyunits.USD_2018,
                     )
                 )
@@ -1452,28 +1504,26 @@ class QGESSCostingData(FlowsheetCostingBlockData):
         #         / 1e6
         #     )
 
-        # if mode == "power" and hasattr(self, "maintenance_material_cost"):
+        if mode == "power" and hasattr(self, "maintenance_material_cost"):
 
-        @self.Constraint(self.parent_block().time)
-        def total_variable_cost_rule_power(c, t):
-            return (
-                c.total_variable_OM_cost[t]
-                == sum(c.variable_operating_costs[t, r] for r in resources)
-                + c.maintenance_material_cost
-                + c.other_variable_costs[t]
-            )
+            @costing.Constraint(self.time)
+            def total_variable_cost_rule_power(c, t):
+                return (
+                    c.total_variable_OM_cost[t]
+                    == sum(c.variable_operating_costs[t, r] for r in resources)
+                    + c.parent_block().maintenance_material_cost  # property of fs, not fs.costing
+                    + c.other_variable_costs[t]
+                )
 
-        # else:
+        else:
 
-        # @self.Constraint(self.time)
-        # def total_variable_cost_rule_hydrogen(c, t):
-        #     return (
-        #         c.H2_costing.total_variable_OM_cost[t]
-        #         == sum(
-        #             c.H2_costing.variable_operating_costs[t, r] for r in resources
-        #         )
-        #         + c.H2_costing.other_variable_costs[t]
-        #     )
+            @costing.Constraint(self.time)
+            def total_variable_cost_rule_hydrogen(c, t):
+                return (
+                    c.total_variable_OM_cost[t]
+                    == sum(c.variable_operating_costs[t, r] for r in resources)
+                    + c.other_variable_costs[t]
+                )
 
         # if mode == "power":
         #     _log.warning(
@@ -1529,7 +1579,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
             for i in fs.costing.total_variable_OM_cost.keys():
                 calculate_variable_from_constraint(
                     fs.costing.total_variable_OM_cost[i],
-                    fs.total_variable_cost_rule_power[i],
+                    fs.costing.total_variable_cost_rule_power[i],
                 )
 
         # initialization for H2 production costs
@@ -1547,7 +1597,7 @@ class QGESSCostingData(FlowsheetCostingBlockData):
             for i in fs.H2_costing.total_variable_OM_cost.keys():
                 calculate_variable_from_constraint(
                     fs.H2_costing.total_variable_OM_cost[i],
-                    fs.total_variable_cost_rule_hydrogen[i],
+                    fs.H2_costing.total_variable_cost_rule_hydrogen[i],
                 )
 
     # -----------------------------------------------------------------------------
